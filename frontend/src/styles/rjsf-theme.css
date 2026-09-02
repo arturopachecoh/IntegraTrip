@@ -1,0 +1,279 @@
+/* ============================================================
+   Ajuste visual del tema "core" de @rjsf/core al lenguaje de
+   IntegraTrip. Todo scopeado a .tool-form para no filtrar.
+   El core emite class names estilo Bootstrap 3 + HTML semántico;
+   cubrimos ambos con selectores de elemento y de clase.
+   ============================================================ */
+
+/* ---------- Layout del formulario ----------
+   El botón "Ejecutar" está FUERA del <form> de RJSF (ver DynamicToolForm), así
+   que su posición la fija este wrapper y no el markup interno de RJSF. */
+.tool-form-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.tool-form-wrap > .tool-form {
+  align-self: stretch;
+}
+
+.tool-form__note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+/* Espaciado interno.
+   RJSF anida wrappers (form-group > fieldset > form-group…) e intercala <div>
+   vacíos. Usamos flujo de bloque y separamos SÓLO entre campos reales con `+`
+   (nunca antes del primero ni después del último), y matamos cualquier margen
+   o padding de arrastre para que el <form> termine justo en el último campo. */
+.tool-form {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.tool-form fieldset {
+  display: block;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.tool-form .form-group,
+.tool-form .rjsf-field,
+.tool-form .field,
+.tool-form .row {
+  margin: 0;
+  padding: 0;
+}
+
+/* Separación entre dos campos consecutivos (y sólo entre ellos). */
+.tool-form .rjsf-field + .rjsf-field,
+.tool-form .form-group + .form-group {
+  margin-top: 16px;
+}
+
+/* Nada de espacio de arrastre al final del form / de cada grupo. */
+.tool-form > *:last-child,
+.tool-form fieldset > *:last-child,
+.tool-form .form-group > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Objetos anidados: marco sutil a la izquierda. */
+.tool-form fieldset fieldset {
+  border-left: 2px solid var(--line);
+  padding-left: 14px;
+}
+
+/* Divs que RJSF intercala vacíos: fuera del flujo. */
+.tool-form .row:empty,
+.tool-form .row.array-item-list:empty,
+.tool-form .rjsf-field:empty,
+.tool-form fieldset:empty {
+  display: none;
+}
+
+/* Red de seguridad del botón "agregar propiedad extra" (ya apagado vía
+   uiSchema.expandable en DynamicToolForm): una tool sólo acepta los argumentos
+   declarados en su inputSchema. */
+.tool-form .rjsf-object-property-expand,
+.tool-form .row:has(> .rjsf-object-property-expand) {
+  display: none;
+}
+
+.tool-form .row.array-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tool-form legend {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--ink);
+  padding: 0;
+  margin: 0 0 8px;
+}
+
+.tool-form label,
+.tool-form .control-label {
+  display: block;
+  font-weight: 500;
+  font-size: 0.88rem;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.tool-form .required {
+  color: var(--amber-strong);
+  margin-left: 2px;
+}
+
+.tool-form .field-description,
+.tool-form .help-block {
+  margin: 2px 0 6px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.tool-form input[type='text'],
+.tool-form input[type='number'],
+.tool-form input[type='email'],
+.tool-form input[type='url'],
+.tool-form input[type='password'],
+.tool-form input[type='search'],
+.tool-form input[type='tel'],
+.tool-form input[type='date'],
+.tool-form input[type='datetime-local'],
+.tool-form input:not([type]),
+.tool-form select,
+.tool-form textarea,
+.tool-form .form-control {
+  width: 100%;
+  font: 400 0.92rem/1.4 var(--font-sans);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+}
+
+.tool-form textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.tool-form input:focus,
+.tool-form select:focus,
+.tool-form textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.tool-form input[type='checkbox'],
+.tool-form input[type='radio'] {
+  width: auto;
+  margin-right: 8px;
+  accent-color: var(--accent);
+}
+
+.tool-form .checkbox label,
+.tool-form .radio label {
+  display: flex;
+  align-items: center;
+  font-weight: 400;
+}
+
+/* Arrays (v6 usa clases con prefijo rjsf-; dejamos también las viejas) */
+
+.tool-form .array-item,
+.tool-form .rjsf-array-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--mist);
+}
+
+.tool-form .array-item-toolbar,
+.tool-form .array-item-toolbox,
+.tool-form .btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* El "+" para agregar va dentro de un <p> con clases de grid inservibles. */
+.tool-form .rjsf-array-item-add {
+  margin: 0;
+  text-align: left;
+}
+
+/* Botones internos del form (add / remove / move).
+   El submit propio lleva .btn--primary y queda excluido. */
+
+.tool-form .btn:not(.btn--primary),
+.tool-form button:not([type='submit']) {
+  appearance: none;
+  font: 500 0.8rem/1 var(--font-sans);
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  width: auto;
+}
+
+.tool-form .btn:not(.btn--primary):hover,
+.tool-form button:not([type='submit']):hover {
+  border-color: var(--ink-soft);
+}
+
+/* Glyphicons de Bootstrap: no hay fuente de iconos cargada, así que los
+   botones saldrían vacíos. Los ocultamos y ponemos texto. */
+.tool-form .glyphicon {
+  display: none;
+}
+
+.tool-form .btn-add {
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+.tool-form .btn-add::after {
+  content: 'Agregar';
+}
+
+.tool-form .array-item-remove::after,
+.tool-form .rjsf-array-item-remove::after {
+  content: 'Quitar';
+}
+
+.tool-form .rjsf-array-item-move-up::after {
+  content: 'Subir';
+}
+
+.tool-form .rjsf-array-item-move-down::after {
+  content: 'Bajar';
+}
+
+.tool-form .rjsf-array-item-copy::after {
+  content: 'Duplicar';
+}
+
+.tool-form .array-item-remove,
+.tool-form .rjsf-array-item-remove,
+.tool-form .btn-danger {
+  color: var(--bad);
+  border-color: #e0b3b1;
+}
+
+/* Errores de validación */
+
+.tool-form .text-danger,
+.tool-form .error-detail {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  color: var(--bad);
+  font-size: 0.82rem;
+}
+
+.tool-form .has-error input,
+.tool-form .has-error select,
+.tool-form .has-error textarea {
+  border-color: var(--bad);
+}
