@@ -200,7 +200,7 @@ async def callback(provider: str, request: Request, db: AsyncSession = Depends(g
             value=create_session_token(user.id),
             max_age=SESSION_TTL_SECONDS,
             httponly=True,
-            samesite="lax",
+            samesite="none",
             secure=request.url.scheme == "https",
             path="/",
         )
