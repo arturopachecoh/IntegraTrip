@@ -201,7 +201,7 @@ async def callback(provider: str, request: Request, db: AsyncSession = Depends(g
             max_age=SESSION_TTL_SECONDS,
             httponly=True,
             samesite="none",
-            secure=request.url.scheme == "https",
+            secure= True,
             path="/",
         )
     return redirect
