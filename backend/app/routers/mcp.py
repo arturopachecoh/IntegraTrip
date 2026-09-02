@@ -70,6 +70,23 @@ async def get_tools(
 
     try:
         return await mcp_client.list_tools(connection.oauth_client.mcp_url, access_token)
+    except (mcp_client.MCPTransportError, mcp_client.MCPError) as exc:
+        # El SDK no expone el status HTTP real, así que no podemos distinguir "el MCP
+        # rechazó el token" de un 5xx transitorio. `list_tools` no tiene efectos
+        # secundarios, así que un único reintento con el token refrescado a la fuerza
+        # cubre las dos causas — es lo que el usuario hacía a mano con "reintentar".
+        logger.warning("mcp list_tools failed connection_id=%s, retrying once: %s", connection_id, exc)
+        try:
+            access_token = await get_valid_access_token(
+                db, user_id=user.id, oauth_client_id=connection.oauth_client_id, force_refresh=True
+            )
+        except TokenRefreshError:
+            # Sin refresh_token utilizable: reintentamos igual con el token actual,
+            # por si el fallo era del lado del MCP y no del token.
+            logger.info("forced refresh unavailable connection_id=%s, retrying with current token", connection_id)
+
+    try:
+        return await mcp_client.list_tools(connection.oauth_client.mcp_url, access_token)
     except mcp_client.MCPTransportError as exc:
         logger.warning("mcp transport error connection_id=%s: %s", connection_id, exc)
         raise HTTPException(status_code=502, detail=f"MCP server unreachable: {exc}")

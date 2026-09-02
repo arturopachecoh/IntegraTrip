@@ -1,8 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
 
 from mcp import ClientSession
 from mcp import MCPError as _MCPError
 from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
+
+logger = logging.getLogger(__name__)
 
 
 class MCPTransportError(Exception):
@@ -34,10 +37,20 @@ def _find_mcp_error(exc: BaseException) -> _MCPError | None:
     return None
 
 
+async def _log_http_error(response) -> None:
+    """El SDK colapsa cualquier HTTP >=400 del MCP en un `-32603 Server returned an
+    error response` y descarta el status real, así que sin esto no hay forma de
+    saber si el servidor contestó 401 (token rechazado) o 5xx (fallo transitorio).
+    Sólo mira el status: leer el body rompería el streaming de SSE."""
+    if response.status_code >= 400:
+        logger.warning("mcp http error status=%s url=%s", response.status_code, response.request.url)
+
+
 @asynccontextmanager
 async def _session(mcp_url: str, access_token: str):
     headers = {"Authorization": f"Bearer {access_token}"}
     async with create_mcp_http_client(headers=headers) as http_client:
+        http_client.event_hooks = {"response": [_log_http_error]}
         async with streamable_http_client(mcp_url, http_client=http_client) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()

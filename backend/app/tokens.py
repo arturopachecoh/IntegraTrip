@@ -12,7 +12,11 @@ from app.models import MCPConnection
 
 logger = logging.getLogger(__name__)
 
-REFRESH_MARGIN_SECONDS = 60
+# Margen amplio a propósito: `token_expires_at` se calcula con el reloj de este
+# servidor (`utcnow() + expires_in`), así que cualquier desfase con el AS acorta
+# la vida real del token. 60s dejaba una ventana en la que la DB creía que el
+# token seguía vivo y el MCP ya lo rechazaba.
+REFRESH_MARGIN_SECONDS = 300
 
 
 class MCPConnectionNotFoundError(Exception):
@@ -23,10 +27,15 @@ class TokenRefreshError(Exception):
     pass
 
 
-async def get_valid_access_token(db: AsyncSession, *, user_id: uuid.UUID, oauth_client_id: uuid.UUID) -> str:
+async def get_valid_access_token(
+    db: AsyncSession, *, user_id: uuid.UUID, oauth_client_id: uuid.UUID, force_refresh: bool = False
+) -> str:
     """Returns a live access_token for this user+provider, refreshing it first if it's
     expired or about to expire. Raises TokenRefreshError if the refresh itself fails
-    (e.g. refresh_token revoked) — callers should treat that as "user must reconnect"."""
+    (e.g. refresh_token revoked) — callers should treat that as "user must reconnect".
+
+    `force_refresh` ignores the stored expiry and refreshes anyway: for when the MCP
+    server rejected the token even though we still considered it valid."""
     stmt = (
         select(MCPConnection)
         .options(joinedload(MCPConnection.oauth_client))
@@ -39,7 +48,7 @@ async def get_valid_access_token(db: AsyncSession, *, user_id: uuid.UUID, oauth_
     expires_soon = connection.token_expires_at is None or connection.token_expires_at <= datetime.utcnow() + timedelta(
         seconds=REFRESH_MARGIN_SECONDS
     )
-    if not expires_soon:
+    if not expires_soon and not force_refresh:
         return connection.access_token
 
     if not connection.refresh_token:
