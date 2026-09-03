@@ -40,11 +40,13 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   const raw = await res.text()
   let body: unknown = null
+  let isJson = true
   if (raw) {
     try {
       body = JSON.parse(raw)
     } catch {
       body = raw
+      isJson = false
     }
   }
 
@@ -57,6 +59,13 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       (typeof body === 'string' ? body : '') ||
       res.statusText
     throw new ApiError(res.status, messageFor(res.status, String(detail)))
+  }
+
+  // Un 2xx que no es JSON no viene del backend: cuando el rewrite `/api/* ->
+  // backend` no matchea, el static site sirve index.html con status 200. Sin
+  // este guardia `getMe()` resolvería OK y dejaría pasar a un usuario sin sesion.
+  if (!isJson) {
+    throw new ApiError(0, `La respuesta de ${path} no es JSON: el backend no está respondiendo esa ruta.`)
   }
 
   return body as T

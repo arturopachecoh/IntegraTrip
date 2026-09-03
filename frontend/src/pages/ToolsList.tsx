@@ -45,7 +45,7 @@ export default function ToolsList() {
       {!loading && error && (
         <ErrorNote
           title="No se pudieron cargar las tools"
-          message={error.message}
+          message={`EL ERROR ES: ${error.message} \n REINTENTALO, A VECES LA PRIMERA VEZ NO FUNCIONA PERO LUEGO SI`}
           onRetry={reload}
         />
       )}

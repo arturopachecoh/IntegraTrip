@@ -82,7 +82,7 @@ export default function Connections() {
       {!loading && error && (
         <ErrorNote
           title="No se pudieron cargar las conexiones"
-          message={error.message}
+          message={`EL ERROR ES: ${error.message} \n REINTENTALO, A VECES LA PRIMERA VEZ NO FUNCIONA PERO LUEGO SI`}
           onRetry={reload}
         />
       )}
