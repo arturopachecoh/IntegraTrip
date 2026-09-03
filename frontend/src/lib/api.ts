@@ -18,7 +18,7 @@ function messageFor(status: number, detail: string): string {
   }
   if (status === 401) return 'Tu sesión expiró o no iniciaste sesión.'
   if (status === 502) {
-    return `El proveedor MCP no respondió (502). ${detail || 'Probá de nuevo en unos segundos.'}`
+    return `El proveedor MCP no respondió (502). ${detail || 'Probá de nuevo en unos segundos.'} \n REINTENTALO, A VECES LA PRIMERA VEZ NO FUNCIONA PERO LUEGO SI`
   }
   if (status === 400) return detail || 'La solicitud tiene datos inválidos (400).'
   return detail || `El servidor respondió con un error (${status}).`
