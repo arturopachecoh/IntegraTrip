@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint, Integer, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 
 class Base(DeclarativeBase):
@@ -18,6 +18,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     mcp_connections: Mapped[list["MCPConnection"]] = relationship(back_populates="user")
+    chats: Mapped[list["Chat"]] = relationship(back_populates="user")
 
 
 class OAuthClient(Base):
@@ -51,3 +52,43 @@ class MCPConnection(Base):
 
     user: Mapped["User"] = relationship(back_populates="mcp_connections")
     oauth_client: Mapped["OAuthClient"] = relationship(back_populates="mcp_connections")
+
+
+class Chat(Base):
+    __tablename__ = "chats"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="chats")
+    messages: Mapped[list["Message"]] = relationship(back_populates="chat")
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    chat_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("chats.id"), nullable=False)
+    role: Mapped[str] = mapped_column(String, nullable=False)  # USER | MODEL | TOOL
+    text: Mapped[str] = mapped_column(String, nullable=True)
+    turn_number: Mapped[int] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    chat: Mapped["Chat"] = relationship(back_populates="messages")
+    tool_calls: Mapped[list["ToolCall"]] = relationship(back_populates="message")
+
+
+class ToolCall(Base):
+    __tablename__ = "tool_calls"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    message_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("messages.id"), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String, nullable=False)
+    arguments_json: Mapped[dict] = mapped_column(JSONB, nullable=True)
+    result_json: Mapped[dict] = mapped_column(JSONB, nullable=True)
+    is_error: Mapped[bool] = mapped_column(Boolean, default=False)
+    external_id: Mapped[str] = mapped_column(String, nullable=True)  # fc.id del proto, para correlacionar call/result
+
+    message: Mapped["Message"] = relationship(back_populates="tool_calls")

@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package iic3103.llm.v1;
+
+// Course LLM proxy for IIC3103 Tarea 2.
+// Each Generate call is a single model turn. Your app owns the agent loop:
+// send tools + history, execute any function_calls against MCP, append TOOL
+// messages, call Generate again until text is set (or you hit max turns).
+
+service Llm {
+  rpc Generate(GenerateRequest) returns (GenerateResponse);
+}
+
+message Tool {
+  // Unique name: [A-Za-z_][A-Za-z0-9_]{0,63}
+  // MCP names collide across servers (e.g. list_bookings). Prefix them,
+  // e.g. pre_search_flights, dcr_book_hotel, cimd_get_forecast.
+  string name = 1;
+  string description = 2;
+  // JSON Schema object (MCP inputSchema), encoded as a JSON string.
+  string input_schema_json = 3;
+}
+
+message FunctionCall {
+  string name = 1;
+  // Object JSON, e.g. {"city":"CUN","date":"2026-12-20"}
+  string arguments_json = 2;
+  string id = 3;
+}
+
+message FunctionResult {
+  string name = 1;
+  // JSON payload returned to the model (object preferred).
+  string result_json = 2;
+  string id = 3;
+  bool is_error = 4;
+}
+
+message Message {
+  enum Role {
+    ROLE_UNSPECIFIED = 0;
+    USER = 1;
+    MODEL = 2;
+    TOOL = 3;
+  }
+  Role role = 1;
+  string text = 2;
+  repeated FunctionCall function_calls = 3;
+  repeated FunctionResult function_results = 4;
+}
+
+message GenerateRequest {
+  repeated Message messages = 1;
+  repeated Tool tools = 2;
+}
+
+message TokenUsage {
+  int32 prompt_tokens = 1;
+  int32 completion_tokens = 2;
+  int32 total_tokens = 3;
+}
+
+message GenerateResponse {
+  // Final assistant text for this turn. Empty when the model wants tools.
+  string text = 1;
+  repeated FunctionCall function_calls = 2;
+  string model = 3;
+  int32 latency_ms = 4;
+  TokenUsage usage = 5;
+  // True when there are no function_calls (safe to stop the loop).
+  bool stop = 6;
+}

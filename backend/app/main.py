@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 
@@ -8,9 +9,19 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_provider_config
-from app.routers import auth, mcp, me
+from app.llm_client import create_llm_channel, create_llm_stub
+from app.routers import auth, chat, mcp, me
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    channel = create_llm_channel()
+    app.state.llm_stub = create_llm_stub(channel)
+    yield
+    await channel.close()
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +34,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(me.router)
 app.include_router(mcp.router)
+app.include_router(chat.router)
 
 
 @app.get("/health")
