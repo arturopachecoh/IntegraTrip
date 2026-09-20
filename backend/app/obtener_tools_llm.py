@@ -36,8 +36,23 @@ async def obtener_tools_llm(db: AsyncSession, user_id: uuid.UUID) -> tuple[list[
             )
             mcp_tools = await mcp_client.list_tools(connection.oauth_client.mcp_url, access_token)
         except (TokenRefreshError, mcp_client.MCPTransportError, mcp_client.MCPError) as exc:
-            logger.warning("skipping provider=%s in tool catalog: %s", connection.oauth_client.provider, exc)
-            continue
+            # El SDK de MCP no expone el status HTTP real (ver mcp_client._log_http_error),
+            # así que no podemos distinguir "el MCP rechazó el token" de un 5xx transitorio.
+            # Un reintento con el token refrescado a la fuerza cubre ambas causas — mismo
+            # patrón que ya usa get_tools en routers/mcp.py.
+            logger.warning(
+                "provider=%s failed in tool catalog, retrying with forced refresh: %s",
+                connection.oauth_client.provider,
+                exc,
+            )
+            try:
+                access_token = await get_valid_access_token(
+                    db, user_id=user_id, oauth_client_id=connection.oauth_client_id, force_refresh=True
+                )
+                mcp_tools = await mcp_client.list_tools(connection.oauth_client.mcp_url, access_token)
+            except (TokenRefreshError, mcp_client.MCPTransportError, mcp_client.MCPError) as exc2:
+                logger.warning("skipping provider=%s in tool catalog: %s", connection.oauth_client.provider, exc2)
+                continue
 
         for t in mcp_tools:
             prefixed_name = f"{prefix}_{t['name']}"

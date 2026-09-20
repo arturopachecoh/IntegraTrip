@@ -44,8 +44,6 @@ async def get_or_create_chat(db: AsyncSession, *, chat_id: uuid.UUID | None, use
 
 
 async def load_history(db: AsyncSession, chat_id: uuid.UUID) -> list[llm_pb2.Message]:
-    """Reconstruye el historial como mensajes proto. Por ahora solo texto (USER/MODEL) —
-    reconstruir function_calls/function_results de TOOL queda para cuando exista el loop."""
     stmt = select(Message).where(Message.chat_id == chat_id).order_by(Message.created_at)
     messages = (await db.execute(stmt)).scalars().all()
     return [llm_pb2.Message(role=getattr(llm_pb2.Message, m.role), text=m.text or "") for m in messages]
