@@ -68,20 +68,22 @@ async def load_historial_chats(db: AsyncSession, chat_id: uuid.UUID):
                     ],
                 )
             )
-            historial.append(
-                llm_pb2.Message(
-                    role=llm_pb2.Message.TOOL,
-                    function_results=[
-                        llm_pb2.FunctionResult(
-                            name=tc.tool_name,
-                            result_json=json.dumps(tc.result_json),
-                            id=tc.external_id or "",
-                            is_error=tc.is_error,
-                        )
-                        for tc in m.tool_calls
-                    ],
+            # Un mensaje TOOL por resultado: si se mandan varios function_results dentro
+            # de un mismo mensaje, el proxy responde "Gemini returned an empty response".
+            for tc in m.tool_calls:
+                historial.append(
+                    llm_pb2.Message(
+                        role=llm_pb2.Message.TOOL,
+                        function_results=[
+                            llm_pb2.FunctionResult(
+                                name=tc.tool_name,
+                                result_json=json.dumps(tc.result_json),
+                                id=tc.external_id or "",
+                                is_error=tc.is_error,
+                            )
+                        ],
+                    )
                 )
-            )
         else:
             historial.append(llm_pb2.Message(role=getattr(llm_pb2.Message, m.role), text=m.text or ""))
 
@@ -140,6 +142,7 @@ async def send_message(
     historial_chats.append(llm_pb2.Message(role=llm_pb2.Message.USER, text=body.text))
 
     for turn in range(12):
+        
         generate_request = llm_pb2.GenerateRequest(messages=historial_chats, tools=catalog)
         try:
             response = await stub.Generate(generate_request, metadata=get_llm_metadata(), timeout=30)
@@ -184,9 +187,12 @@ async def send_message(
                 role=llm_pb2.Message.MODEL, text=response.text, function_calls=response.function_calls
             )
         )
-        historial_chats.append(
-            llm_pb2.Message(role=llm_pb2.Message.TOOL, function_results=resultados)
-        )
+        # Un mensaje TOOL por resultado: si se mandan varios function_results dentro de
+        # un mismo mensaje, el proxy responde "Gemini returned an empty response".
+        for resultado in resultados:
+            historial_chats.append(
+                llm_pb2.Message(role=llm_pb2.Message.TOOL, function_results=[resultado])
+            )
 
     await db.commit()
     raise HTTPException(status_code=504, detail="El agente no llegó a una respuesta final en 12 turnos.")
