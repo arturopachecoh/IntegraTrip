@@ -1,4 +1,13 @@
-import type { Connection, Me, Tool, ToolsResponse } from '../types'
+import type {
+  CatalogTool,
+  ChatDetail,
+  ChatSummary,
+  Connection,
+  Me,
+  SendMessageResult,
+  Tool,
+  ToolsResponse,
+} from '../types'
 
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -17,6 +26,19 @@ function messageFor(status: number, detail: string): string {
     return `No se pudo contactar al servidor (${API_URL}). Verificá que el backend esté corriendo.`
   }
   if (status === 401) return 'Tu sesión expiró o no iniciaste sesión.'
+  if (status === 429) {
+    return 'Límite de uso alcanzado. Esperá un momento y volvé a enviar tu mensaje.'
+  }
+  if (status === 504) {
+    return (
+      detail ||
+      'El agente hizo demasiados intentos sin llegar a una respuesta. Probá reformulando el pedido.'
+    )
+  }
+  // El 502 del chat viene del proxy del LLM, no de un MCP: el detail lo distingue.
+  if (status === 502 && detail.startsWith('Error del LLM')) {
+    return `El modelo no respondió. ${detail}`
+  }
   if (status === 502) {
     return `El proveedor MCP no respondió (502). ${detail || 'Probá de nuevo en unos segundos.'} \n REINTENTALO, A VECES LA PRIMERA VEZ NO FUNCIONA PERO LUEGO SI`
   }
@@ -106,3 +128,31 @@ export const authConnectUrl = (slug: string, intent: 'login' | 'connect') =>
 export function hardRedirect(url: string): void {
   window.location.assign(url)
 }
+
+/* ---------- Catálogo de tools ---------- */
+
+/**
+ * Catálogo unificado que se le ofrece al modelo. Consulta los 3 MCPs en vivo, así
+ * que tarda; si un proveedor falla, el backend lo omite en vez de fallar entero.
+ */
+export const getToolCatalog = () => apiFetch<CatalogTool[]>('/api/tools')
+
+/* ---------- Chat ---------- */
+
+export const listChats = () => apiFetch<ChatSummary[]>('/api/chats')
+
+export const getChat = (chatId: string) =>
+  apiFetch<ChatDetail>(`/api/chats/${encodeURIComponent(chatId)}`)
+
+/**
+ * Corre el loop del agente entero (hasta 12 turnos con tools), así que puede
+ * tardar bastante. `chatId` null crea un chat nuevo y devuelve su id.
+ *
+ * La respuesta trae solo el texto final: las tool calls de este turno quedan en
+ * la base, no acá. Para mostrar la traza hay que volver a pedir el chat.
+ */
+export const sendMessage = (chatId: string | null, text: string) =>
+  apiFetch<SendMessageResult>('/api/chats/messages', {
+    method: 'POST',
+    body: JSON.stringify({ chat_id: chatId, text }),
+  })

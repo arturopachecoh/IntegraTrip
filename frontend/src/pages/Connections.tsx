@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { authConnectUrl, getConnections, hardRedirect } from '../lib/api'
 import { PROVIDERS, providerName } from '../lib/providers'
-import { formatDateTime } from '../lib/format'
+import { formatBackendDateTime } from '../lib/format'
 import { useAsync } from '../hooks/useAsync'
 import type { Connection } from '../types'
 import RidgeDivider from '../components/RidgeDivider'
 import Spinner from '../components/Spinner'
 import ErrorNote from '../components/ErrorNote'
 import StatusBanner from '../components/StatusBanner'
+import ToolCatalog from '../components/ToolCatalog'
 
 interface Notice {
   kind: 'ok' | 'err'
@@ -121,7 +122,7 @@ export default function Connections() {
                     <>
                       <span className="dot dot--on" />
                       <span className="status-on">Conectado</span>
-                      <span>· {formatDateTime(conn.connected_at)}</span>
+                      <span>· {formatBackendDateTime(conn.connected_at)}</span>
                       <span className="badge" title="Tipo de credenciales OAuth">
                         {conn.auth_type}
                       </span>
@@ -138,6 +139,8 @@ export default function Connections() {
           })}
         </div>
       )}
+
+      <ToolCatalog />
     </>
   )
 }
