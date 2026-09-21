@@ -43,7 +43,7 @@ export default function ChatSidebar({
         )}
 
         {!loading && !error && chats?.length === 0 && (
-          <p className="rail__empty">Tus conversaciones van a aparecer acá.</p>
+          <p className="rail__empty">Tus conversaciones aparecerán aquí.</p>
         )}
 
         {!loading &&

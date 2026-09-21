@@ -23,16 +23,16 @@ export class ApiError extends Error {
 
 function messageFor(status: number, detail: string): string {
   if (status === 0) {
-    return `No se pudo contactar al servidor (${API_URL}). Verificá que el backend esté corriendo.`
+    return `No se pudo contactar al servidor (${API_URL}). Verifica que el backend esté corriendo.`
   }
   if (status === 401) return 'Tu sesión expiró o no iniciaste sesión.'
   if (status === 429) {
-    return 'Límite de uso alcanzado. Esperá un momento y volvé a enviar tu mensaje.'
+    return 'Límite de uso alcanzado. Espera un momento y vuelve a enviar tu mensaje.'
   }
   if (status === 504) {
     return (
       detail ||
-      'El agente hizo demasiados intentos sin llegar a una respuesta. Probá reformulando el pedido.'
+      'El agente hizo demasiados intentos sin llegar a una respuesta. Intenta reformular la solicitud.'
     )
   }
   // El 502 del chat viene del proxy del LLM, no de un MCP: el detail lo distingue.
@@ -40,7 +40,8 @@ function messageFor(status: number, detail: string): string {
     return `El modelo no respondió. ${detail}`
   }
   if (status === 502) {
-    return `El proveedor MCP no respondió (502). ${detail || 'Probá de nuevo en unos segundos.'} \n REINTENTALO, A VECES LA PRIMERA VEZ NO FUNCIONA PERO LUEGO SI`
+    const extra = detail ? `${detail} ` : ''
+    return `El proveedor MCP no respondió (502). ${extra}A veces la primera llamada falla y la siguiente funciona: vuelve a intentarlo.`
   }
   if (status === 400) return detail || 'La solicitud tiene datos inválidos (400).'
   return detail || `El servidor respondió con un error (${status}).`

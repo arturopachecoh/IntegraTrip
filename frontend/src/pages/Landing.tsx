@@ -24,8 +24,8 @@ export default function Landing() {
         </span>
         <h1>Tus proveedores de viaje, en una sola sesión.</h1>
         <p className="landing__lede">
-          IntegraTrip es un cliente MCP: conectás Andes Air, StayWell y Cielo Sur con tu
-          cuenta y ejecutás sus herramientas —vuelos, hoteles y clima— desde una misma
+          IntegraTrip es un cliente MCP: conectas Andes Air, StayWell y Cielo Sur con tu
+          cuenta y ejecutas sus herramientas —vuelos, hoteles y clima— desde una misma
           consola, sin manejar tokens a mano.
         </p>
         <div className="landing__meta">

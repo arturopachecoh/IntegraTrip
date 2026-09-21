@@ -1,4 +1,4 @@
-const dateFmt = new Intl.DateTimeFormat('es-AR', {
+const dateFmt = new Intl.DateTimeFormat('es', {
   dateStyle: 'medium',
   timeStyle: 'short',
 })
@@ -14,8 +14,8 @@ export function shortId(id: string): string {
   return id.length > 8 ? id.slice(0, 8) : id
 }
 
-const dayFmt = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' })
-const timeFmt = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit' })
+const dayFmt = new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short' })
+const timeFmt = new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' })
 
 /**
  * El backend guarda `datetime.utcnow()`, que serializa SIN offset ("2026-09-21T14:02:11").

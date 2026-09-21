@@ -67,8 +67,8 @@ export default function Connections() {
         <h1>Conexiones</h1>
         <RidgeDivider />
         <p className="lede">
-          Conectá cada proveedor una vez con OAuth. Después vas a poder ver y ejecutar sus
-          tools desde acá.
+          Conecta cada proveedor una vez con OAuth. Después podrás ver y ejecutar sus
+          herramientas desde esta página.
         </p>
       </div>
 
@@ -83,7 +83,7 @@ export default function Connections() {
       {!loading && error && (
         <ErrorNote
           title="No se pudieron cargar las conexiones"
-          message={`EL ERROR ES: ${error.message} \n REINTENTALO, A VECES LA PRIMERA VEZ NO FUNCIONA PERO LUEGO SI`}
+          message={`${error.message}\n\nA veces la primera llamada falla y la siguiente funciona: vuelve a intentarlo.`}
           onRetry={reload}
         />
       )}

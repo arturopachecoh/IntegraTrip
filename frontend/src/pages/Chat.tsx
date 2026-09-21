@@ -11,7 +11,7 @@ import RidgeDivider from '../components/RidgeDivider'
 /** Arranques posibles, para que la pantalla vacía sea una invitación y no un hueco. */
 const EXAMPLES = [
   'Quiero volar a Cancún el 20 de diciembre por una semana. ¿Qué opciones hay?',
-  'Buscá un hotel céntrico en Bariloche para dos personas del 5 al 9 de julio.',
+  'Busca un hotel céntrico en Bariloche para dos personas del 5 al 9 de julio.',
   '¿Cómo va a estar el clima en Ushuaia la próxima semana?',
 ]
 
@@ -52,7 +52,7 @@ export default function Chat() {
               <h1>¿Adónde vamos?</h1>
               <RidgeDivider />
               <p className="welcome__lede">
-                Contame el viaje que tenés en mente. Voy a buscar vuelos, alojamiento y
+                Cuéntame el viaje que tienes en mente. Voy a buscar vuelos, alojamiento y
                 clima en los proveedores que conectaste, y te muestro cada consulta que
                 hice para llegar a la respuesta.
               </p>
@@ -85,7 +85,7 @@ export default function Chat() {
                 <div className="limit" role="alert">
                   <p className="limit__head">Límite de uso alcanzado</p>
                   <p className="limit__body">
-                    Esperá un momento y volvé a enviar tu mensaje. No reintentamos solos.
+                    Espera un momento y vuelve a enviar tu mensaje. No se reintenta automáticamente.
                   </p>
                 </div>
               ) : (

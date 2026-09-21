@@ -53,7 +53,7 @@ export default function Composer({ onSend, busy }: ComposerProps) {
         className="composer__input"
         rows={1}
         value={text}
-        placeholder="Contá adónde querés ir y cuándo"
+        placeholder="Cuéntame adónde quieres ir y cuándo"
         aria-label="Mensaje"
         disabled={busy}
         onChange={(e) => {

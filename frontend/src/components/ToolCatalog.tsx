@@ -37,7 +37,7 @@ export default function ToolCatalog() {
         )}
       </div>
       <p className="catalog__lede">
-        Esto es lo que el agente puede hacer por vos en el chat. Se lee en vivo de cada
+        Esto es lo que el agente puede hacer por ti en el chat. Se lee en vivo de cada
         proveedor conectado.
       </p>
 
@@ -53,7 +53,7 @@ export default function ToolCatalog() {
 
       {!loading && !error && tools.length === 0 && (
         <div className="card empty">
-          Todavía no hay herramientas. Conectá un proveedor para verlas acá.
+          Todavía no hay herramientas. Conecta un proveedor para verlas aquí.
         </div>
       )}
 
