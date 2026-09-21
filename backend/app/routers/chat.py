@@ -28,9 +28,61 @@ class MessageIn(BaseModel):
     text: str
 
 
-async def get_or_create_chat(db: AsyncSession, *, chat_id: uuid.UUID | None, user_id: uuid.UUID):
+@router.get("/chats")
+async def list_chats(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    sentencia = select(Chat).where(Chat.user_id == user.id).order_by(Chat.created_at.desc())
+    chats = (await db.execute(sentencia)).scalars().all()
+    return [{"id": str(c.id), "title": c.title, "created_at": c.created_at} for c in chats]
+
+
+@router.get("/chats/{chat_id}")
+async def get_chat(
+    chat_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    chat = await db.get(Chat, chat_id)
+    if chat is None or chat.user_id != user.id:
+        raise HTTPException(status_code=404, detail="chat not found")
+
+    sentencia = (
+        select(Message)
+        .options(selectinload(Message.tool_calls))
+        .where(Message.chat_id == chat_id)
+        .order_by(Message.created_at)
+    )
+    messages = (await db.execute(sentencia)).scalars().all()
+
+    return {
+        "id": str(chat.id),
+        "title": chat.title,
+        "created_at": chat.created_at,
+        "messages": [
+            {
+                "role": m.role,
+                "text": m.text,
+                "created_at": m.created_at,
+                "tool_calls": [
+                    {
+                        "name": tc.tool_name,
+                        "arguments": tc.arguments_json,
+                        "result": tc.result_json,
+                        "is_error": tc.is_error,
+                    }
+                    for tc in m.tool_calls
+                ],
+            }
+            for m in messages
+        ],
+    }
+
+
+async def get_or_create_chat(db: AsyncSession, *, chat_id: uuid.UUID | None, user_id: uuid.UUID, titulo: str):
     if chat_id is None:
-        chat = Chat(user_id=user_id)
+        chat = Chat(user_id=user_id, title=titulo[:80])
         db.add(chat)
         await db.flush()  # para obtener chat.id sin hacer commit todavía
         return chat
@@ -133,7 +185,7 @@ async def send_message(
     db: AsyncSession = Depends(get_db),
     stub: LlmStub = Depends(get_llm_stub),
 ):
-    chat = await get_or_create_chat(db, chat_id=body.chat_id, user_id=user.id)
+    chat = await get_or_create_chat(db, chat_id=body.chat_id, user_id=user.id, titulo=body.text)
     historial_chats = await load_historial_chats(db, chat.id)
     catalog, tool_registry = await obtener_tools_llm(db, user.id)
 

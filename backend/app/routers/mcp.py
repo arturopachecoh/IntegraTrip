@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 
@@ -10,6 +11,7 @@ from app import mcp_client
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import MCPConnection, User
+from app.obtener_tools_llm import obtener_tools_llm
 from app.schemas import MCPConnectionOut
 from app.tokens import TokenRefreshError, get_valid_access_token
 
@@ -49,6 +51,25 @@ async def list_connections(
             connected_at=c.created_at,
         )
         for c in connections
+    ]
+
+
+@router.get("/tools")
+async def list_catalogo(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """El mismo catálogo que se le manda al modelo, pero en JSON plano para la vista
+    de Configuración (los nombres acá ya vienen prefijados por proveedor)."""
+    tools, registry = await obtener_tools_llm(db, user.id)
+    return [
+        {
+            "name": t.name,
+            "description": t.description,
+            "input_schema": json.loads(t.input_schema_json),
+            "provider": registry[t.name]["connection"].oauth_client.provider,
+        }
+        for t in tools
     ]
 
 
