@@ -24,6 +24,17 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
+# El proto no tiene rol SYSTEM: esto se manda como primer mensaje USER de cada request
+# (no se guarda en la DB). {hoy} se reemplaza con la fecha actual en cada mensaje.
+SYSTEM_PROMPT = """Eres un asistente de viajes. Responde siempre en español.
+Hoy es {hoy}.
+Reglas:
+- Si el usuario da una fecha sin año, usa la próxima vez que ocurra esa fecha a partir de hoy. No preguntes el año.
+- Nunca uses fechas pasadas al llamar herramientas.
+- Si piden vuelos "del X al Y", son ida y vuelta: la ida es origen -> destino el día X y la vuelta es destino -> origen el día Y.
+- Basa tus respuestas solo en los resultados de las herramientas. Si una herramienta devolvió vuelos, hoteles u otros datos, muéstralos; di que no hay resultados solo si la lista viene vacía.
+- Si falta un dato obligatorio (por ejemplo la ciudad de origen), pregúntalo en un solo mensaje."""
+
 
 class MessageIn(BaseModel):
     chat_id: uuid.UUID | None = None  # None => chat nuevo
@@ -193,10 +204,14 @@ async def send_message(
 
     db.add(Message(chat_id=chat.id, role="USER", text=body.text))
     await db.flush()
-    # El proto no tiene rol SYSTEM: la fecha va antepuesta al mensaje (no se guarda en la DB)
-    hoy = datetime.now(ZoneInfo("America/Santiago")).strftime("%Y-%m-%d")
-    contexto = f"[Hoy es {hoy}. Usa esta fecha como referencia para cualquier fecha que no traiga año.]\n\n"
-    historial_chats.append(llm_pb2.Message(role=llm_pb2.Message.USER, text=contexto + body.text))
+    historial_chats.append(llm_pb2.Message(role=llm_pb2.Message.USER, text=body.text))
+
+    hoy = datetime.now(ZoneInfo("America/Santiago")).strftime("%Y-%m-%d (%A)")
+    historial_chats = [
+        llm_pb2.Message(role=llm_pb2.Message.USER, text=SYSTEM_PROMPT.format(hoy=hoy)),
+        llm_pb2.Message(role=llm_pb2.Message.MODEL, text="Entendido."),
+        *historial_chats,
+    ]
 
     for turn in range(12):
         
