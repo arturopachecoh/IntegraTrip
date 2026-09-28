@@ -1,6 +1,8 @@
 import json
 import logging
 import uuid
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import grpc
 from fastapi import APIRouter, Depends, HTTPException
@@ -191,7 +193,10 @@ async def send_message(
 
     db.add(Message(chat_id=chat.id, role="USER", text=body.text))
     await db.flush()
-    historial_chats.append(llm_pb2.Message(role=llm_pb2.Message.USER, text=body.text))
+    # El proto no tiene rol SYSTEM: la fecha va antepuesta al mensaje (no se guarda en la DB)
+    hoy = datetime.now(ZoneInfo("America/Santiago")).strftime("%Y-%m-%d")
+    contexto = f"[Hoy es {hoy}. Usa esta fecha como referencia para cualquier fecha que no traiga año.]\n\n"
+    historial_chats.append(llm_pb2.Message(role=llm_pb2.Message.USER, text=contexto + body.text))
 
     for turn in range(12):
         
