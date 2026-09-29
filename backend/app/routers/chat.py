@@ -208,15 +208,12 @@ async def send_message(
     historial_chats.append(llm_pb2.Message(role=llm_pb2.Message.USER, text=body.text))
 
     hoy = datetime.now(ZoneInfo("America/Santiago")).strftime("%Y-%m-%d (%A)")
-    system = [
-        llm_pb2.Message(role=llm_pb2.Message.USER, text=SYSTEM_PROMPT.format(hoy=hoy)),
-        llm_pb2.Message(role=llm_pb2.Message.MODEL, text="Entendido."),
-    ]
+    system = [llm_pb2.Message(role=llm_pb2.Message.USER, text=SYSTEM_PROMPT.format(hoy=hoy))]
 
     for turn in range(12):
-        # El proxy acepta máximo 32 mensajes: los 2 del system + los 30 más recientes,
+        # El proxy acepta máximo 32 mensajes: el del system + los 31 más recientes,
         # partiendo en un USER para no dejar un resultado de tool sin su llamada
-        recientes = historial_chats[-30:]
+        recientes = historial_chats[-31:]
         while recientes[0].role != llm_pb2.Message.USER:
             recientes.pop(0)
 
