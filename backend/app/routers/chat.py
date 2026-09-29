@@ -33,7 +33,8 @@ Reglas:
 - Nunca uses fechas pasadas al llamar herramientas.
 - Si piden vuelos "del X al Y", son ida y vuelta: la ida es origen -> destino el día X y la vuelta es destino -> origen el día Y.
 - Basa tus respuestas solo en los resultados de las herramientas. Si una herramienta devolvió vuelos, hoteles u otros datos, muéstralos; di que no hay resultados solo si la lista viene vacía.
-- Si falta un dato obligatorio (por ejemplo la ciudad de origen), pregúntalo en un solo mensaje."""
+- Si falta un dato obligatorio (por ejemplo la ciudad de origen), pregúntalo en un solo mensaje.
+- Antes de reservar un vuelo o un hotel, muestra un resumen de la reserva y pide confirmación. Solo reserva si el usuario confirma."""
 
 
 class MessageIn(BaseModel):
@@ -207,15 +208,19 @@ async def send_message(
     historial_chats.append(llm_pb2.Message(role=llm_pb2.Message.USER, text=body.text))
 
     hoy = datetime.now(ZoneInfo("America/Santiago")).strftime("%Y-%m-%d (%A)")
-    historial_chats = [
+    system = [
         llm_pb2.Message(role=llm_pb2.Message.USER, text=SYSTEM_PROMPT.format(hoy=hoy)),
         llm_pb2.Message(role=llm_pb2.Message.MODEL, text="Entendido."),
-        *historial_chats,
     ]
 
     for turn in range(12):
-        
-        generate_request = llm_pb2.GenerateRequest(messages=historial_chats, tools=catalog)
+        # El proxy acepta máximo 32 mensajes: los 2 del system + los 30 más recientes,
+        # partiendo en un USER para no dejar un resultado de tool sin su llamada
+        recientes = historial_chats[-30:]
+        while recientes[0].role != llm_pb2.Message.USER:
+            recientes.pop(0)
+
+        generate_request = llm_pb2.GenerateRequest(messages=system + recientes, tools=catalog)
         try:
             response = await stub.Generate(generate_request, metadata=get_llm_metadata(), timeout=30)
         except grpc.aio.AioRpcError as exc:
