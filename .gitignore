@@ -1,0 +1,8 @@
+.DS_Store
+
+# Los PDFs de las revistas no se suben al repo
+rag/pdfs/
+*.pdf
+
+rag/.venv/
+rag/.env
