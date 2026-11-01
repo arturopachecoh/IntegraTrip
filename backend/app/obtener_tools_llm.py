@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app import llm_pb2, mcp_client
+from app import llm_pb2, mcp_client, rag
 from app.models import MCPConnection
 from app.tokens import TokenRefreshError, get_valid_access_token
 
@@ -25,7 +25,7 @@ async def obtener_tools_llm(db: AsyncSession, user_id: uuid.UUID) -> tuple[list[
     )
     connections = (await db.execute(stmt)).scalars().all()
 
-    tools: list[llm_pb2.Tool] = []
+    tools: list[llm_pb2.Tool] = [rag.RAG_TOOL]
     conexiones: dict[str, dict] = {}
 
     for connection in connections:
@@ -69,3 +69,4 @@ async def obtener_tools_llm(db: AsyncSession, user_id: uuid.UUID) -> tuple[list[
             }
 
     return tools, conexiones
+    

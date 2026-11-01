@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app import llm_pb2, mcp_client
+from app import llm_pb2, mcp_client, rag
 from app.db import get_db
 from app.dependencies import get_current_user, get_llm_stub
 from app.llm_client import get_llm_metadata
@@ -34,7 +34,8 @@ Reglas:
 - Si piden vuelos "del X al Y", son ida y vuelta: la ida es origen -> destino el día X y la vuelta es destino -> origen el día Y.
 - Basa tus respuestas solo en los resultados de las herramientas. Si una herramienta devolvió vuelos, hoteles u otros datos, muéstralos; di que no hay resultados solo si la lista viene vacía.
 - Si falta un dato obligatorio (por ejemplo la ciudad de origen), pregúntalo en un solo mensaje.
-- Antes de reservar un vuelo o un hotel, muestra un resumen de la reserva y pide confirmación. Solo reserva si el usuario confirma."""
+- Antes de reservar un vuelo o un hotel, muestra un resumen de la reserva y pide confirmación. Solo reserva si el usuario confirma.
+- Para preguntas sobre destinos (qué ver, dónde comer, recomendaciones de viaje) usa siempre rag_search_magazines; nunca respondas eso con tu propio conocimiento. Responde solo con lo que digan los fragmentos, citando revista y páginas. Si ningún fragmento sirve, responde exactamente: "No encontré información suficiente en las revistas proporcionadas.\""""
 
 
 class MessageIn(BaseModel):
@@ -157,10 +158,25 @@ async def load_historial_chats(db: AsyncSession, chat_id: uuid.UUID):
 
 
 async def ejecutar_tool(
-    db: AsyncSession, fc: llm_pb2.FunctionCall, registry: dict, user_id: uuid.UUID
+    db: AsyncSession, fc: llm_pb2.FunctionCall, registry: dict, user_id: uuid.UUID, stub: LlmStub
 ) -> llm_pb2.FunctionResult:
     """Un fallo acá no es un error del sistema sino información para el modelo: vuelve
     como FunctionResult(is_error=True) para que decida cómo seguir en el próximo turno."""
+    # rag_search_magazines no es MCP: se ejecuta aquí mismo en el BFF
+    if fc.name == rag.RAG_TOOL.name:
+        try:
+            pregunta = json.loads(fc.arguments_json)["question"]
+            resultado = await rag.rag_search_magazines(stub, pregunta)
+            # ensure_ascii=False: que el LLM lea "á" y no "á" en todo el texto de las revistas
+            return llm_pb2.FunctionResult(
+                name=fc.name, id=fc.id, result_json=json.dumps(resultado, ensure_ascii=False)
+            )
+        except Exception as exc:
+            logger.exception("Error ejecutando tool %s", fc.name)
+            return llm_pb2.FunctionResult(
+                name=fc.name, id=fc.id, result_json=json.dumps({"error": str(exc)}), is_error=True
+            )
+
     if fc.name not in registry:
         return llm_pb2.FunctionResult(
             name=fc.name,
@@ -242,7 +258,7 @@ async def send_message(
 
         resultados = []
         for fc in response.function_calls:
-            resultado = await ejecutar_tool(db, fc, tool_registry, user.id)
+            resultado = await ejecutar_tool(db, fc, tool_registry, user.id, stub)
             resultados.append(resultado)
             db.add(
                 ToolCall(

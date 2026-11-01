@@ -67,7 +67,8 @@ async def list_catalogo(
             "name": t.name,
             "description": t.description,
             "input_schema": json.loads(t.input_schema_json),
-            "provider": registry[t.name]["connection"].oauth_client.provider,
+            # rag_search_magazines no viene de un MCP, así que no está en el registry
+            "provider": registry[t.name]["connection"].oauth_client.provider if t.name in registry else "local",
         }
         for t in tools
     ]
