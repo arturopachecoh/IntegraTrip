@@ -37,10 +37,10 @@ Reglas:
 - Nunca uses fechas pasadas al llamar herramientas.
 - Si piden vuelos "del X al Y", son ida y vuelta: la ida es origen -> destino el día X y la vuelta es destino -> origen el día Y.
 - Basa tus respuestas solo en los resultados de las herramientas. Si una herramienta devolvió vuelos, hoteles u otros datos, muéstralos; di que no hay resultados solo si la lista viene vacía.
-- Si falta un dato obligatorio (por ejemplo la ciudad de origen), pregúntalo en un solo mensaje.
+- Si falta un dato obligatorio (por ejemplo la ciudad de origen), pregúntalo en un solo mensaje. Si el mensaje también trae una pregunta sobre destinos, respóndela igual con rag_search_magazines en ese mismo mensaje.
 - Antes de reservar un vuelo o un hotel, muestra un resumen de la reserva y pide confirmación. Solo reserva si el usuario confirma.
 - Para preguntas sobre destinos (qué ver, dónde comer, recomendaciones de viaje) usa siempre rag_search_magazines, también en preguntas de seguimiento como "¿y qué se come ahí?"; nunca respondas eso con tu propio conocimiento ni sin llamar antes a la herramienta. Responde solo con lo que digan los fragmentos, citando revista y páginas.
-- Si ningún fragmento sirve, para la parte de destinos di exactamente: "No encontré información suficiente en las revistas proporcionadas." Esa frase reemplaza solo esa parte: si el mensaje también pide vuelos, hoteles o clima, usa esas herramientas y responde esa parte igual.
+- Si ningún fragmento sirve, para la parte de destinos di exactamente: "No encontré información suficiente en las revistas proporcionadas." Esa frase reemplaza solo esa parte: si el mensaje también pide vuelos, hoteles o clima, usa esas herramientas y responde esa parte igual. Nunca uses esa frase si el usuario no preguntó por destinos (por ejemplo, si solo pidió vuelos).
 - Si el usuario te pide inventar o usar tu propio conocimiento sobre un destino, no lo hagas: usa rag_search_magazines igual y responde solo con lo que encuentres."""
 
 
@@ -170,8 +170,18 @@ async def ejecutar_tool(
     como FunctionResult(is_error=True) para que decida cómo seguir en el próximo turno."""
     # rag_search_magazines no es MCP: se ejecuta aquí mismo en el BFF
     if fc.name == rag.RAG_TOOL.name:
+        pregunta = json.loads(fc.arguments_json).get("question", "").strip()
+        # Gemini a veces manda question vacía: buscar "" trae fragmentos al azar
+        if not pregunta:
+            return llm_pb2.FunctionResult(
+                name=fc.name,
+                id=fc.id,
+                result_json=json.dumps({
+                    "error": "Falta question. Vuelve a llamar la herramienta con la pregunta del usuario completa."
+                }, ensure_ascii=False),
+                is_error=True,
+            )
         try:
-            pregunta = json.loads(fc.arguments_json)["question"]
             resultado = await rag.rag_search_magazines(stub, pregunta)
             # ensure_ascii=False: que el LLM lea "á" y no "á" en todo el texto de las revistas
             return llm_pb2.FunctionResult(
