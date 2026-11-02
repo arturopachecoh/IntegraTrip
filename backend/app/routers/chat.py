@@ -183,7 +183,7 @@ async def ejecutar_tool(
             )
         try:
             resultado = await rag.rag_search_magazines(stub, pregunta)
-            # ensure_ascii=False: que el LLM lea "á" y no "á" en todo el texto de las revistas
+            # ensure_ascii=False: que el LLM lea "á" y no "\u00e1" en todo el texto de las revistas
             return llm_pb2.FunctionResult(
                 name=fc.name, id=fc.id, result_json=json.dumps(resultado, ensure_ascii=False)
             )
