@@ -18,8 +18,8 @@ INSTRUCCIONES = (
     "Responde usando SOLO la información de estos fragmentos, sin agregar datos de tu propio conocimiento. "
     "Cita cada dato con su revista y páginas, por ejemplo: (Traveling 70, págs. 40,41). "
     "Ignora los fragmentos que no tengan que ver con la pregunta. Si al menos uno sirve, aunque sea "
-    "parcialmente, responde con lo que diga ese fragmento. Solo si ninguno sirve, responde exactamente: "
-    f'"{FRASE_RECHAZO}"'
+    "parcialmente, responde con lo que diga ese fragmento. Solo si ninguno sirve, para esta parte de la "
+    f'respuesta di exactamente: "{FRASE_RECHAZO}" y responde igual el resto (vuelos, hoteles, clima).'
 )
 
 RAG_TOOL = llm_pb2.Tool(
@@ -27,15 +27,20 @@ RAG_TOOL = llm_pb2.Tool(
     description=(
         "Busca información en las revistas de viajes Traveling: destinos, qué ver y hacer, "
         "dónde comer, gastronomía, cultura, naturaleza y alojamientos con encanto. "
-        "Úsala para cualquier pregunta o recomendación sobre destinos de viaje. "
-        "No sirve para buscar vuelos, reservar hoteles ni consultar el clima."
+        "Úsala para cualquier pregunta o recomendación sobre destinos de viaje, también en preguntas "
+        "de seguimiento. No sirve para buscar ni reservar vuelos u hoteles ni para consultar el clima: "
+        "para eso están las tools de Andes Air, StayWell y Cielo Sur."
     ),
     input_schema_json=json.dumps({
         "type": "object",
         "properties": {
             "question": {
                 "type": "string",
-                "description": "La pregunta del usuario sobre destinos, en español y con todo su contexto.",
+                "description": (
+                    "La pregunta del usuario sobre destinos, en español y autocontenida: completa con el "
+                    "historial lo que falte. Por ejemplo, si antes se habló del Tirol y el usuario pregunta "
+                    "'¿y qué se come ahí?', la pregunta es 'comida típica del Tirol'."
+                ),
             },
         },
         "required": ["question"],
