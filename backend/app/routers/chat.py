@@ -24,6 +24,10 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
+# Un mensaje MODEL con function_calls y texto vacío hace que Gemini responda vacío en el
+# turno siguiente (5 de 6 veces en pruebas; 0 de 6 con algo de texto). Se rellena con esto.
+TEXTO_LLAMADA_TOOLS = "Consultando las herramientas."
+
 # El proto no tiene rol SYSTEM: esto se manda como primer mensaje USER de cada request
 # (no se guarda en la DB). {hoy} se reemplaza con la fecha actual en cada mensaje.
 SYSTEM_PROMPT = """Eres un asistente de viajes. Responde siempre en español.
@@ -126,7 +130,7 @@ async def load_historial_chats(db: AsyncSession, chat_id: uuid.UUID):
             historial.append(
                 llm_pb2.Message(
                     role=llm_pb2.Message.MODEL,
-                    text=m.text or "",
+                    text=m.text or TEXTO_LLAMADA_TOOLS,
                     function_calls=[
                         llm_pb2.FunctionCall(
                             name=tc.tool_name,
@@ -189,6 +193,22 @@ async def ejecutar_tool(
 
     entrada = registry[fc.name]
     connection = entrada["connection"]
+
+    # Gemini a veces omite parámetros obligatorios (p. ej. el origen de un vuelo) aunque el
+    # schema los marque como required. Se corta acá con un error claro en vez de llamar al MCP.
+    argumentos = json.loads(fc.arguments_json)
+    faltantes = [p for p in entrada["required"] if not argumentos.get(p)]
+    if faltantes:
+        return llm_pb2.FunctionResult(
+            name=fc.name,
+            id=fc.id,
+            result_json=json.dumps({
+                "error": f"Faltan parámetros obligatorios: {', '.join(faltantes)}. "
+                "No los inventes: pregúntale al usuario por ellos."
+            }, ensure_ascii=False),
+            is_error=True,
+        )
+
     try:
         access_token = await get_valid_access_token(
             db, user_id=user_id, oauth_client_id=connection.oauth_client_id
@@ -197,7 +217,7 @@ async def ejecutar_tool(
             connection.oauth_client.mcp_url,
             access_token,
             entrada["original_name"],
-            json.loads(fc.arguments_json),
+            argumentos,
         )
         return llm_pb2.FunctionResult(name=fc.name, id=fc.id, result_json=json.dumps(resultado))
     except Exception as exc:
@@ -208,6 +228,19 @@ async def ejecutar_tool(
             result_json=json.dumps({"error": str(exc)}),
             is_error=True,
         )
+
+
+async def generar(stub: LlmStub, request: llm_pb2.GenerateRequest) -> llm_pb2.GenerateResponse:
+    """Gemini a veces responde vacío y el proxy lo devuelve como INTERNAL. Es intermitente,
+    así que se reintenta un par de veces antes de devolverle el error al usuario."""
+    for intento in range(3):
+        try:
+            return await stub.Generate(request, metadata=get_llm_metadata(), timeout=30)
+        except grpc.aio.AioRpcError as exc:
+            vacia = exc.code() == grpc.StatusCode.INTERNAL and "empty response" in (exc.details() or "")
+            if not vacia or intento == 2:
+                raise
+            logger.warning("Gemini devolvió una respuesta vacía, reintento %d", intento + 1)
 
 
 @router.post("/chats/messages")
@@ -237,7 +270,7 @@ async def send_message(
 
         generate_request = llm_pb2.GenerateRequest(messages=system + recientes, tools=catalog)
         try:
-            response = await stub.Generate(generate_request, metadata=get_llm_metadata(), timeout=30)
+            response = await generar(stub, generate_request)
         except grpc.aio.AioRpcError as exc:
             await db.commit()  # guarda lo que ya se hizo en turnos anteriores
             if exc.code() == grpc.StatusCode.RESOURCE_EXHAUSTED:
@@ -276,7 +309,9 @@ async def send_message(
 
         historial_chats.append(
             llm_pb2.Message(
-                role=llm_pb2.Message.MODEL, text=response.text, function_calls=response.function_calls
+                role=llm_pb2.Message.MODEL,
+                text=response.text or TEXTO_LLAMADA_TOOLS,
+                function_calls=response.function_calls,
             )
         )
         # Un mensaje TOOL por resultado: si se mandan varios function_results dentro de

@@ -66,6 +66,7 @@ async def obtener_tools_llm(db: AsyncSession, user_id: uuid.UUID) -> tuple[list[
             conexiones[prefixed_name] = {
                 "connection": connection,
                 "original_name": t["name"],
+                "required": t.get("inputSchema", {}).get("required", []),
             }
 
     return tools, conexiones
