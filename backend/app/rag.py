@@ -17,9 +17,13 @@ FRASE_RECHAZO = "No encontré información suficiente en las revistas proporcion
 INSTRUCCIONES = (
     "Responde usando SOLO la información de estos fragmentos, sin agregar datos de tu propio conocimiento. "
     "Cita cada dato con su revista y páginas, por ejemplo: (Traveling 70, págs. 40,41). "
-    "Ignora los fragmentos que no tengan que ver con la pregunta. Si al menos uno sirve, aunque sea "
-    "parcialmente, responde con lo que diga ese fragmento. Solo si ninguno sirve, para esta parte de la "
-    f'respuesta di exactamente: "{FRASE_RECHAZO}" y responde igual el resto (vuelos, hoteles, clima).'
+    "Un fragmento sirve solo si habla del mismo lugar por el que pregunta el usuario. Revisa de qué "
+    "país o ciudad habla cada uno: si es de otro lugar, ignóralo y no lo menciones, aunque el tema se "
+    "parezca (un fragmento sobre Portugal no sirve para una pregunta sobre España). "
+    "Si un fragmento sirve pero no trae todo lo que se pidió (por ejemplo, describe el lugar pero no "
+    "da precios ni horarios), responde con lo que sí dice y aclara qué dato no aparece. "
+    f'Solo si ninguno sirve, para esta parte di exactamente: "{FRASE_RECHAZO}", sin agregar nada más '
+    "sobre destinos, y responde igual lo de vuelos, hoteles o clima si lo pidieron."
 )
 
 RAG_TOOL = llm_pb2.Tool(
