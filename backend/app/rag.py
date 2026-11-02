@@ -17,13 +17,13 @@ FRASE_RECHAZO = "No encontré información suficiente en las revistas proporcion
 INSTRUCCIONES = (
     "Responde usando SOLO la información de estos fragmentos, sin agregar datos de tu propio conocimiento. "
     "Cita cada dato con su revista y páginas, por ejemplo: (Traveling 70, págs. 40,41). "
-    "Un fragmento sirve solo si habla del mismo lugar por el que pregunta el usuario. Revisa de qué "
-    "país o ciudad habla cada uno: si es de otro lugar, ignóralo y no lo menciones, aunque el tema se "
-    "parezca (un fragmento sobre Portugal no sirve para una pregunta sobre España). "
-    "Si un fragmento sirve pero no trae todo lo que se pidió (por ejemplo, describe el lugar pero no "
-    "da precios ni horarios), responde con lo que sí dice y aclara qué dato no aparece. "
-    f'Solo si ninguno sirve, para esta parte di exactamente: "{FRASE_RECHAZO}", sin agregar nada más '
-    "sobre destinos, y responde igual lo de vuelos, hoteles o clima si lo pidieron."
+    "Primero identifica los fragmentos que hablan del lugar preguntado, o de un lugar que está dentro "
+    "de él (por ejemplo, Dubrovnik y sus islas para una pregunta sobre Croacia), y sobre lo que se "
+    "pregunta. Responde con ellos aunque no cubran todo; para saber dónde queda un lugar puedes usar lo "
+    "que sabes, pero no para agregar datos. Si falta un dato pedido (precio, horario), di que no aparece. "
+    "No menciones fragmentos de otros países o ciudades, aunque el tema se parezca. "
+    f'Solo si ningún fragmento sirve, para esta parte di exactamente: "{FRASE_RECHAZO}", sin agregar '
+    "nada más sobre destinos, y responde igual lo de vuelos, hoteles o clima si lo pidieron."
 )
 
 RAG_TOOL = llm_pb2.Tool(
@@ -109,7 +109,9 @@ async def descomponer_pregunta(stub, pregunta: str) -> list[str]:
 
 
 async def rag_search_magazines(stub, pregunta: str) -> dict:
-    queries = await descomponer_pregunta(stub, pregunta)
+    # La pregunta completa también se busca: al descomponerla a veces se pierde la combinación
+    # ("comer bien" + "ver el atardecer" por separado) o el nombre exacto ("islas croatas")
+    queries = [pregunta] + [q for q in await descomponer_pregunta(stub, pregunta) if q != pregunta]
 
     # Busca cada query y junta los resultados, sin repetir chunks
     encontrados = {}
