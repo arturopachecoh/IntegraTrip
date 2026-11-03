@@ -165,23 +165,16 @@ async def load_historial_chats(db: AsyncSession, chat_id: uuid.UUID):
 
 
 async def ejecutar_tool(
-    db: AsyncSession, fc: llm_pb2.FunctionCall, registry: dict, user_id: uuid.UUID, stub: LlmStub
+    db: AsyncSession, fc: llm_pb2.FunctionCall, registry: dict, user_id: uuid.UUID, stub: LlmStub,
+    texto_usuario: str,
 ) -> llm_pb2.FunctionResult:
     """Un fallo acá no es un error del sistema sino información para el modelo: vuelve
     como FunctionResult(is_error=True) para que decida cómo seguir en el próximo turno."""
     # rag_search_magazines no es MCP: se ejecuta aquí mismo en el BFF
     if fc.name == rag.RAG_TOOL.name:
-        pregunta = json.loads(fc.arguments_json).get("question", "").strip()
-        # Gemini a veces manda question vacía: buscar "" trae fragmentos al azar
-        if not pregunta:
-            return llm_pb2.FunctionResult(
-                name=fc.name,
-                id=fc.id,
-                result_json=json.dumps({
-                    "error": "Falta question. Vuelve a llamar la herramienta con la pregunta del usuario completa."
-                }, ensure_ascii=False),
-                is_error=True,
-            )
+        # Gemini a veces manda question vacía (buscar "" trae fragmentos al azar) y, si se le
+        # devuelve error, no siempre reintenta: se busca con el mensaje del usuario
+        pregunta = json.loads(fc.arguments_json).get("question", "").strip() or texto_usuario
         try:
             resultado = await rag.rag_search_magazines(stub, pregunta)
             # ensure_ascii=False: que el LLM lea "á" y no "\u00e1" en todo el texto de las revistas
@@ -309,7 +302,7 @@ async def send_message(
 
         resultados = []
         for fc in response.function_calls:
-            resultado = await ejecutar_tool(db, fc, tool_registry, user.id, stub)
+            resultado = await ejecutar_tool(db, fc, tool_registry, user.id, stub, body.text)
             resultados.append(resultado)
             db.add(
                 ToolCall(
