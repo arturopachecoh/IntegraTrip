@@ -243,8 +243,13 @@ async def ejecutar_tool(
 
 async def generar(stub: LlmStub, request: llm_pb2.GenerateRequest) -> llm_pb2.GenerateResponse:
     """Gemini a veces responde vacío y el proxy lo devuelve como INTERNAL. Es intermitente,
-    así que se reintenta un par de veces antes de devolverle el error al usuario."""
+    así que se reintenta un par de veces antes de devolverle el error al usuario.
+    Si viene justo de un resultado de tool, el último intento va sin tools: Gemini a veces
+    se traba intentando llamar otra tool (p. ej. buscar vuelos sin fecha tras list_airports),
+    y sin tools responde con lo que ya tiene."""
     for intento in range(3):
+        if intento == 2 and request.messages[-1].role == llm_pb2.Message.TOOL:
+            request = llm_pb2.GenerateRequest(messages=request.messages)
         try:
             return await stub.Generate(request, metadata=get_llm_metadata(), timeout=30)
         except grpc.aio.AioRpcError as exc:
